@@ -1,0 +1,84 @@
+name: read action
+run-name: 📚 ${{ inputs['book-status'] }} book ${{ inputs.identifier }}
+
+# Grant the action permission to write to the repository
+permissions:
+  contents: write
+
+# Trigger the action
+on:
+  workflow_dispatch:
+    inputs:
+      book-status:
+        description: What is the status of the book? Required. You can completely customize the default value and options.
+        required: true
+        type: choice
+        default: "want to read"
+        options:
+          - "want to read"
+          - "started"
+          - "finished"
+          - "abandoned"
+          - "summary" # Outputs your reading summary year to date
+      identifier:
+        description: The book's identifier. This is an ISBN, Libby or Libro.fm share URL.
+        # Example values:
+        # 9780062315007
+        # https://share.libbyapp.com/title/9575390
+        # https://libro.fm/audiobooks/9781797176888-the-ministry-of-time
+        type: string
+      date:
+        description: Date to record the status of the book (YYYY-MM-DD). Leave blank for today.
+        type: string
+      notes:
+        description: Notes about the book. Optional.
+        type: string
+      # Adding a rating is optional.
+      # You can change the options to whatever you want to use.
+      # For example, you can use numbers, other emoji, or words.
+      rating:
+        description: Rate the book. Optional. You can completely customize the default value and options.
+        type: choice
+        default: "unrated"
+        options:
+          - "unrated"
+          - ⭐️
+          - ⭐️⭐️
+          - ⭐️⭐️⭐️
+          - ⭐️⭐️⭐️⭐️
+          - ⭐️⭐️⭐️⭐️⭐️
+      # Tags are optional.
+      tags:
+        description: Add tags to categorize the book. Separate each tag with a comma.
+        type: string
+      # Duration is optional and is in HH:MM format.
+      # Example: 8:30
+      # The example above is 8 hours and 30 minutes.
+      duration:
+        description: Duration of the Libby audiobook (HH:MM).
+        type: string
+
+# Set up the steps to run the action
+jobs:
+  update-library:
+    runs-on: ubuntu-latest
+    name: Read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Read
+        uses: library-pals/read-action@v9.5.0
+        with:
+          time-zone: Europe/Budapest
+        env:
+          GOOGLE_BOOKS_API_KEY: ${{ secrets.GOOGLE_BOOKS_API_KEY }}
+
+      - name: Commit updated read file
+        if: env.BookStatus != 'summary'
+        run: |
+          git pull
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A && git commit -m "📚 “${{ env.BookTitle }}” (${{ env.BookStatus }})"
+          git push
